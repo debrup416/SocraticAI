@@ -4,15 +4,22 @@ import time
 import openai
 import wolframalpha
 from openai.error import InvalidRequestError
+import gpt4all
+from gpt4all import GPT4All
 
-openai.organization = os.environ.get("OPENAI_ORG")
-openai.api_key = os.environ.get("OPENAI_API_KEY")
 math_engine = wolframalpha.Client(os.environ.get("WOLFRAM_APP_ID"))
 
+gpt = None
+def load_model():
+    global gpt
+    path="../model"
+    gpt=GPT4All(model_name="ggml-gpt4all-j-v1.3-groovy.bin",model_path=path)
+
+
 class SocraticGPT:
-    def __init__(self, role, n_round=10, model="gpt-3.5-turbo"):
+    def __init__(self, role, n_round=10, model=None):
         self.role = role
-        self.model = model
+        # self.model = model
         self.n_round = n_round
         
         if self.role == "Socrates":
@@ -53,19 +60,12 @@ class SocraticGPT:
             
     def get_response(self, temperature=None):
         try:
-            if temperature:
-                res = openai.ChatCompletion.create(
-                    model = self.model,
-                    messages = self.history,
-                    temperature = temperature
-                )
-            else:
-                res = openai.ChatCompletion.create(
-                    model = self.model,
+            res = gpt.chat_completion(
                     messages = self.history
                 )
             msg = res.get("choices")[0]["message"]["content"]
-
+                
+            
         except InvalidRequestError as e:
             if "maximum context length" in str(e):
                 # Handle the maximum context length error here
@@ -87,18 +87,11 @@ class SocraticGPT:
                 "content": "The above is the conversation between Socrates and Theaetetus. You job is to challenge their anwers. They were likely to have made multiple mistakes. Please correct them. \nRemember to start your answer with \"NO\" if you think so far their discussion is alright, otherwise start with \"Here are my suggestions:\""
         }
         try:
-            if temperature:
-                res = openai.ChatCompletion.create(
-                    model = self.model,
-                    messages = self.history + [pf_template],
-                    temperature = temperature
-                )
-            else:
-                res = openai.ChatCompletion.create(
-                    model = self.model,
-                    messages = self.history + [pf_template]
-                )
+            res = gpt.chat_completion(
+                    messages = self.history+[pf_template]
+            )
             msg = res.get("choices")[0]["message"]["content"]
+            
         except InvalidRequestError as e:
             if "maximum context length" in str(e):
                 # Handle the maximum context length error here
@@ -175,9 +168,9 @@ def write_Python(text):
     matches2 = re.findall(pattern2, text)
 
     if len(matches2) > 0:
-    	matches = matches2
+        matches = matches2
     else:
-    	matches = matches + matches2
+        matches = matches + matches2
 
     pattern3 = r"(@write_code\s*(.*))"
     check_write = re.findall(pattern3, text)

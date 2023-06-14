@@ -16,6 +16,9 @@ N = 50
 last_client_id = 0
 session_states = {}
 
+@app.before_first_request
+def initialize():
+    load_model()
 
 class SessionState:
     def __init__(self, client_id):
